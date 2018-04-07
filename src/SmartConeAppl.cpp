@@ -7,6 +7,8 @@
 #include "SmartConeAppl.h"
 
 #include <stdlib.h>
+#include <sstream>
+#include <cstring>
 
 using Veins::TraCIMobilityAccess;
 using Veins::AnnotationManagerAccess;
@@ -41,13 +43,17 @@ void SmartConeAppl::receiveSignal(cComponent* source, simsignal_t signalID, cObj
 
 void SmartConeAppl::onData(WaveShortMessage* wsm) {
     // Receive a message with the target laneId and target speed, slow down to that speed and change lane
-    std::string message = wsm->getWsmData();
-    std::targetLaneId = strtok(message, " ");
+    // std::string message = wsm->getWsmData();
+
+    // split the message to get laneId and speed
+    char *msg = (char *)wsm->getWsmData();
+    char *s = strtok(msg, " ");
+    std::string targetLaneId(s);
     float speed = atof(strtok(NULL, " "));
 
     // check if the vehicle is on the target lane
     if (traciVehicle->getLaneId() == targetLaneId) {
-        traciVehicle->slowDown(message_speed, 5000); //slow down over 1s
+        traciVehicle->slowDown(speed, 5000); //slow down over 1s
         //TODO: the duration should be at least the time estimated to pass the construction zone
         traciVehicle->changeLane(1, 5000); // merge to the left lane
         /*
@@ -70,10 +76,14 @@ void SmartConeAppl::handlePositionUpdate(cObject* obj) {
     // TODO: update every 30s
     while (true) {
         for (int i = 2; i <= 10; i++) {
-            std::string laneId = "1_" << i;
+            std::stringstream id;
+            id << i << "_0";
+            std::string laneId = id.str();
             double meanSpeed = traci->lane(laneId).getMeanSpeed();
             if (meanSpeed < minSpeed) {
-                std::string message = laneId << " " << suggestedSpeed;
+                std::stringstream msg;
+                msg << laneId << " " << suggestedSpeed;
+                std::string message = msg.str();
                 sendMessage(message);
                 lastSent = simTime();
                 break;
